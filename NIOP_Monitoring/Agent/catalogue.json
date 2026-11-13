@@ -1,0 +1,243 @@
+{
+  "version": 1,
+  "entities": {
+    "report": {
+      "description": "A report produced for a patient enrollment, for example an EFS report. One row per report. Use it to find a report's status, type, hold state, its file attachment, or which enrollment it belongs to. Sorted by creation date by default.",
+      "sqlFile": "Sql/report.sql",
+      "key": "ReportNumber",
+      "defaultSort": { "column": "CreatedDate", "direction": "desc" },
+      "links": [
+        { "to": "enrollment", "via": "EnrollmentId", "kind": "one-to-one" }
+    ],
+      "columns": {
+        "ReportNumber":     { "type": "int",    "description": "The report's own number (a whole number, e.g. 5521). This is what users type to identify a report.", "synonyms": ["report", "report no", "report id"], "identifier": true },
+        "ReportStatus":     { "type": "string", "description": "Current workflow status of the report.", "synonyms": ["status", "report state"], "loadValues": true, "groupable": true },
+        "ReportType":       { "type": "string", "description": "Kind of report.", "synonyms": ["report kind", "file type"], "loadValues": true, "groupable": true },
+        "OnHold":           { "type": "bool",   "description": "True if the report is currently on hold.", "synonyms": ["held", "on hold", "paused"], "groupable": true },
+        "OnHoldBy":         { "type": "string", "description": "User who put the report on hold.", "synonyms": ["held by"] },
+        "OnHoldReason":     { "type": "string", "ansi": true, "description": "Free-text reason the report was put on hold.", "synonyms": ["hold reason", "why on hold"], "searchable": true },
+        "AttachmentId":     { "type": "guid",   "description": "ID (GUID) of the attachment that holds the report file.", "synonyms": ["report file", "file id"] },
+        "AttachmentType":   { "type": "string", "ansi": true, "description": "Type of the report's file attachment.", "loadValues": true, "groupable": true },
+        "ObjectType":       { "type": "string", "ansi": true, "description": "What kind of object the report file is attached to.", "loadValues": true, "groupable": true },
+        "ContentType":      { "type": "string", "ansi": true, "description": "File format of the report file, for example application/pdf.", "synonyms": ["file format", "mime type"], "loadValues": true },
+        "EnrollmentNumber": { "type": "int",    "description": "Number of the enrollment this report belongs to.", "synonyms": ["enrollment", "enrollment no"] },
+        "EnrollmentId":     { "type": "guid",   "description": "Internal ID (GUID) of the enrollment this report belongs to. Users never type this; use it to find the enrollment's details (query enrollment with EnrollmentId)." },
+        "EnrollmentStatus": { "type": "string", "description": "Status of the enrollment this report belongs to.", "loadValues": true, "groupable": true },
+        "DeviceType":       { "type": "string", "ansi": true, "description": "Type of device used for the enrollment, for example Holter or MCT.", "synonyms": ["device", "monitor type"], "loadValues": true, "groupable": true },
+        "Facility":         { "type": "string", "description": "Facility (clinic or hospital) the report is for.", "synonyms": ["clinic", "hospital", "site"], "loadValues": true, "groupable": true },
+        "CreatedDate":     { "type": "date",   "description": "When the report was created.", "synonyms": ["created", "creation date"], "filterable": false }
+      }
+    },
+    "enrollment": {
+    "description": "A patient enrollment (monitoring episode). One row per enrollment. Use it for enrollment status, billing method/status, device type, facility, and to see which orders, reports and attachments belong to it.",
+    "sqlFile": "Sql/enrollment.sql",
+    "key": "EnrollmentId",
+    "defaultSort": { "column": "EnrollmentId", "direction": "desc" },
+    "links": [
+        { "to": "report", "via": "EnrollmentId", "kind": "one-to-one" },
+        { "to": "order",  "via": "EnrollmentId", "kind": "one-to-many" }
+    ],
+    "columns": {
+        "EnrollmentId":           { "type": "guid",   "description": "Internal ID (GUID) of the enrollment. Users never type this; use it to find the enrollment's details (query enrollment with EnrollmentId)."},
+        "EnrollmentNumber":       { "type": "int",    "description": "The enrollment's own number (a whole number). This is what users type to identify an enrollment.", "synonyms": ["enrollment", "enrollment id", "enrollment no"], "identifier": true },
+        "EnrollmentStatus":       { "type": "string", "description": "Current status of the enrollment.", "synonyms": ["status"], "loadValues": true, "groupable": true },
+        "DeviceType":             { "type": "string", "ansi": true, "description": "Type of device used for this enrollment, for example Holter or MCT.", "synonyms": ["device", "monitor type"], "loadValues": true, "groupable": true },
+        "Facility":               { "type": "string", "description": "Facility (clinic or hospital) the enrollment belongs to.", "synonyms": ["clinic", "hospital", "site"], "loadValues": true, "groupable": true },
+        "BillingMethod":          { "type": "string", "ansi": true, "description": "How the enrollment is billed.", "synonyms": ["billing type", "payment method"], "loadValues": true, "groupable": true },
+        "BillingStatus":          { "type": "string", "description": "Current billing status of the enrollment.", "synonyms": ["billing"], "loadValues": true, "groupable": true },
+        "PendingAttachmentCount": { "type": "int",    "description": "Number of attachments still pending for this enrollment.", "synonyms": ["pending attachments", "missing documents"], "filterable": false },
+        "OrderNumbers":           { "type": "string", "description": "Orders placed for this enrollment. To get order details, query order with EnrollmentNumber.", "list": true },
+        "OrderCount":             { "type": "int",    "description": "Number of orders for this enrollment.", "filterable": false },
+        "AttachmentIds":          { "type": "string", "description": "IDs of attachments (documents) on this enrollment.", "list": true },
+        "AttachmentCount":        { "type": "int",    "description": "Number of attachments.", "filterable": false },
+        "ReportNumbers":          { "type": "string", "description": "Reports generated for this enrollment. To get report details, query report with EnrollmentNumber.", "list": true },
+        "ReportCount":            { "type": "int",    "description": "Number of reports.", "filterable": false },
+        "ReportTypes":            { "type": "string", "description": "Distinct types of reports for this enrollment, for example EFS.", "list": true }
+    }
+    },
+
+    "order": {
+    "description": "An order to ship devices/kits to a center or facility. One row per order. Use it for order status, type, center, who created it, the enrollment it belongs to, and which devices, bundles, kits and pre-built kits are in it.",
+    "sqlFile": "Sql/order.sql",
+    "key": "OrderNumber",
+    "defaultSort": { "column": "OrderNumber", "direction": "desc" },
+    "links": [
+        { "to": "enrollment",   "via": "EnrollmentId", "kind": "many-to-one" },
+        { "to": "order_device",       "via": "OrderNumber",      "kind": "one-to-many" },
+        { "to": "prebuilt_kit", "via": "OrderNumber",      "kind": "one-to-many" }
+    ],
+    "columns": {
+        "OrderNumber":      { "type": "int",    "description": "The order's own number (a whole number). This is what users type to identify an order.", "synonyms": ["order", "order id", "order no"], "identifier": true },
+        "OrderType":        { "type": "string", "description": "Kind of order.", "synonyms": ["type"], "loadValues": true, "groupable": true },
+        "OrderStatus":      { "type": "string", "description": "Current status of the order, for example Pending, Completed or Cancelled.", "synonyms": ["status", "state"], "loadValues": true, "groupable": true },
+        "Center":           { "type": "string", "description": "Distribution center that fulfils the order.", "synonyms": ["distribution center", "DC", "warehouse"], "loadValues": true, "groupable": true },
+        "Facility":         { "type": "string", "description": "Facility (clinic or hospital) the order is for.", "synonyms": ["clinic", "hospital", "site"], "loadValues": true, "groupable": true },
+        "CreatedUser":      { "type": "string", "description": "User who created the order.", "synonyms": ["created by", "placed by"], "searchable": true },
+        "EnrollmentNumber": { "type": "int",    "description": "Number of the enrollment this order belongs to.", "synonyms": ["enrollment", "enrollment id"] },
+        "EnrollmentId":     { "type": "guid",   "description": "Internal ID (GUID) of the enrollment. Users never type this; use it to find the enrollment's details (query enrollment with EnrollmentId)." },
+        "DeviceSerials":    { "type": "string", "description": "Serial numbers of devices in this order. To get device details for all of them, query order_device with OrderNumber.", "list": true },
+        "DeviceCount":      { "type": "int",    "description": "Number of devices in the order.", "filterable": false },
+        "BundleIds":        { "type": "string", "description": "Bundles in this order.", "list": true },
+        "BundleCount":      { "type": "int",    "description": "Number of bundles in the order.", "filterable": false },
+        "Kits":             { "type": "string", "description": "Names of kits in this order.", "list": true },
+        "PBKSerialNumbers": { "type": "string", "description": "Pre-built kits in this order. To get details, query prebuilt_kit with OrderNumber.", "list": true },
+        "PBKCount":         { "type": "int",    "description": "Number of pre-built kits in the order.", "filterable": false }
+    }
+    },
+
+    "device": {
+    "description": "A physical monitoring device. One row per device serial number. Use it for where a device is (location, center, facility), its type/category/config, and which order, bundle and transfer it is in.",
+    "sqlFile": "Sql/device.sql",
+    "key": "SerialNumber",
+    "defaultSort": { "column": "SerialNumber", "direction": "asc" },
+    "links": [
+        { "to": "order_device",        "via": "SerialNumber",    "kind": "one-to-one" },
+        { "to": "order",        "via": "OrderNumber",    "kind": "many-to-one" },
+        { "to": "prebuilt_kit", "via": "PBKSerialNumber",       "kind": "many-to-one" },
+        { "to": "transfer",     "via": "TransferNumber", "kind": "many-to-one" }
+    ],
+    "columns": {
+        "SerialNumber":        { "type": "string", "description": "The device's serial number. This is what users type to identify a device.", "synonyms": ["serial", "SN", "device", "device id"], "identifier": true },
+        "PartNumber":          { "type": "string", "description": "Manufacturer part number of the device.", "synonyms": ["part", "part no"] },
+        "BundleId":            { "type": "guid",   "description": "Internal GUID of the bundle the device is in (from its latest order). Users never type this; to find devices by bundle number, query prebuilt_kit with BundleNumber first, then device with its BundleId." },
+        "OrderNumber":         { "type": "int",    "description": "The device's LATEST order only. For all orders this device has been in, query order_device with SerialNumber." },
+        "OrderNumbers":        { "type": "string", "description": "All distinct order numbers for orders containing this device. To get order details, query order with an individual OrderNumber from this list.", "list": true },
+        "OrderCount":          { "type": "int",    "description": "Number of distinct orders containing this device.", "filterable": false },
+        "TransferNumber":      { "type": "int",    "description": "Latest transfer the device was part of.", "synonyms": ["transfer"] },
+        "Location":            { "type": "string", "description": "Current storage location of the device.", "synonyms": ["where", "bin", "shelf", "location"], "searchable": true },
+        "Center":              { "type": "string", "description": "Distribution center that currently holds the device.", "synonyms": ["distribution center", "DC", "warehouse"], "loadValues": true, "groupable": true },
+        "DeviceType":          { "type": "string", "ansi": true, "description": "Kind of device, for example Holter or MCT.", "synonyms": ["type", "monitor type"], "loadValues": true, "groupable": true },
+        "DeviceCategory":      { "type": "string", "ansi": true, "description": "Category the device type belongs to.", "synonyms": ["category"], "loadValues": true, "groupable": true },
+        "DeviceConfig":        { "type": "string", "ansi": true, "description": "Configuration of the device.", "synonyms": ["config", "configuration"], "loadValues": true, "groupable": true },
+        "Facility":            { "type": "string", "description": "Facility (clinic or hospital) the device is assigned to.", "synonyms": ["clinic", "hospital", "site"], "loadValues": true, "groupable": true },
+        "PurchaseOrderNumber": { "type": "string", "ansi": true, "description": "Vendor purchase order the device was bought on.", "synonyms": ["PO", "PO number", "purchase order"] },
+        "PBKSerialNumber":     { "type": "int",    "description": "Pre-built kit the device is in (from its latest order). To get PBK details, query prebuilt_kit with PBKSerialNumber.", "synonyms": ["PBK", "pre-built kit", "prebuilt kit", "package serial"] }
+    }
+    },
+
+    "transfer": {
+    "description": "A transfer of devices from one center to another. One row per transfer. Use it for transfer status, from/to centers, notes, and which devices were moved.",
+    "sqlFile": "Sql/transfer.sql",
+    "key": "TransferNumber",
+    "defaultSort": { "column": "TransferNumber", "direction": "desc" },
+    "links": [
+        { "to": "device", "via": "TransferNumber", "kind": "one-to-many" }
+    ],
+    "columns": {
+        "TransferNumber": { "type": "int",    "description": "The transfer's own number. This is what users type to identify a transfer.", "synonyms": ["transfer", "transfer id", "transfer no"], "identifier": true },
+        "TransferStatus": { "type": "string", "description": "Current status of the transfer.", "synonyms": ["status"], "loadValues": true, "groupable": true },
+        "Note":           { "type": "string", "description": "Free-text note on the transfer.", "synonyms": ["comment", "remarks"], "searchable": true },
+        "FromCenter":     { "type": "string", "description": "Center the devices were sent from.", "synonyms": ["source", "from", "origin"], "loadValues": true, "groupable": true },
+        "ToCenter":       { "type": "string", "description": "Center the devices were sent to.", "synonyms": ["destination", "to"], "loadValues": true, "groupable": true },
+        "DeviceSerials":  { "type": "string", "description": "Serial numbers of devices in this transfer. To get device details, query device with SerialNumber.", "list": true },
+        "DeviceCount":    { "type": "int",    "description": "Number of devices in the transfer.", "filterable": false },
+        "DeviceTypes":    { "type": "string", "description": "Distinct device types in this transfer.", "list": true }
+    }
+    },
+
+    "prebuilt_kit": {
+    "description": "A pre-built kit (PBK): a packaged kit assembled ahead of time. One row per PBK. Use it for PBK status, center, expiration, kit, bundle, order, and part numbers inside it.",
+    "sqlFile": "Sql/prebuiltkit.sql",
+    "key": "PBKSerialNumber",
+    "defaultSort": { "column": "PBKSerialNumber", "direction": "desc" },
+    "links": [
+        { "to": "order",  "via": "OrderNumber", "kind": "many-to-one" },
+        { "to": "device", "via": "PBKSerialNumber",    "kind": "one-to-many" }
+    ],
+    "columns": {
+        "PBKSerialNumber": { "type": "int",  "description": "The pre-built kit's package serial number (a whole number). This is what users type to identify a PBK.", "synonyms": ["PBK", "pre-built kit", "prebuilt kit", "package serial"], "identifier": true },
+        "PBKStatus":       { "type": "string", "description": "Current status of the pre-built kit.", "synonyms": ["status"], "loadValues": true, "groupable": true },
+        "Center":          { "type": "string", "description": "Distribution center holding the PBK.", "synonyms": ["distribution center", "DC", "warehouse"], "loadValues": true, "groupable": true },
+        "BundleId":        { "type": "guid", "description": "Internal GUID of the bundle in this PBK. Users never type this; use it to find the bundle's devices (query device with BundleId)." },
+        "BundleNumber":    { "type": "int",  "description": "Bundle number shown to users (a whole number).", "synonyms": ["bundle", "bundle no"] },
+        "ExpirationDate":  { "type": "date",   "description": "When the PBK expires.", "synonyms": ["expiry", "expires"], "filterable": false },
+        "Kit":             { "type": "string", "description": "Name of the kit this PBK is built from.", "synonyms": ["kit name"], "loadValues": true, "groupable": true },
+        "OrderNumber":     { "type": "int",    "description": "Order this PBK belongs to.", "synonyms": ["order"] },
+        "OrderStatus":     { "type": "string", "description": "Status of the order this PBK belongs to.", "loadValues": true, "groupable": true },
+        "OrderType":       { "type": "string", "description": "Type of the order this PBK belongs to.", "loadValues": true, "groupable": true },
+        "PartNumbers":     { "type": "string", "description": "Part numbers inside this PBK.", "list": true },
+        "PartCount":       { "type": "int",    "description": "Number of distinct parts in the PBK.", "filterable": false },
+        "DeviceSerials":  { "type": "string", "description": "Serial numbers of devices in this PBK. To get device details, query device with SerialNumber.", "list": true },
+        "DeviceCount":    { "type": "int",    "description": "Number of devices in the PBK.", "filterable": false }
+    }
+    },
+
+    "order_device": {
+    "description": "One line of an order: one device in one order. One row per order line. A device can be in many orders and an order has many devices, so use this to list ALL devices in an order, ALL orders a device has been in, or to count devices across orders (for example devices by type in pending orders).",
+    "sqlFile": "Sql/order_device.sql",
+    "key": "OrderDeviceId",
+    "defaultSort": { "column": "OrderNumber", "direction": "desc" },
+    "links": [
+        { "to": "order",  "via": "OrderNumber",  "kind": "many-to-one" },
+        { "to": "device", "via": "SerialNumber", "kind": "many-to-one" }
+    ],
+    "columns": {
+        "OrderDeviceId": { "type": "int",    "description": "Internal ID of the order line. Users never type this.", "filterable": false },
+        "OrderNumber":   { "type": "int",    "description": "The order this line belongs to.", "synonyms": ["order", "order no"] },
+        "OrderStatus":   { "type": "string", "description": "Status of the order.", "synonyms": ["status"], "loadValues": true, "groupable": true },
+        "OrderType":     { "type": "string", "description": "Type of the order.", "loadValues": true, "groupable": true },
+        "Center":        { "type": "string", "description": "Distribution center fulfilling the order.", "synonyms": ["DC", "warehouse"], "loadValues": true, "groupable": true },
+        "SerialNumber":  { "type": "string", "description": "Serial number of the device on this line.", "synonyms": ["serial", "device"] },
+        "DeviceType":    { "type": "string", "ansi": true, "description": "Kind of device on this line, for example Holter or MCT.", "loadValues": true, "groupable": true },
+        "BundleId":      { "type": "guid",   "description": "Internal GUID of the bundle this line belongs to. Users never type this." },
+        "BundleNumber":  { "type": "int",    "description": "Bundle number this line belongs to.", "synonyms": ["bundle"] }
+    }
+    },
+
+    "bundle": {
+    "description": "A bundle: a group of devices packed together from a kit, used in orders and pre-built kits. One row per bundle. Use it for which kit a bundle is, and which devices, orders and pre-built kits it belongs to.",
+    "sqlFile": "Sql/bundle.sql",
+    "key": "BundleId",
+    "defaultSort": { "column": "BundleNumber", "direction": "desc" },
+    "links": [
+        { "to": "order_device", "via": "BundleId", "kind": "one-to-many" },
+        { "to": "prebuilt_kit", "via": "BundleId", "kind": "one-to-many" },
+        { "to": "kit",          "via": "Kit",      "kind": "many-to-one" }
+    ],
+    "columns": {
+        "BundleId":         { "type": "guid",   "description": "Internal GUID of the bundle. Users never type this; use it to follow links." },
+        "BundleNumber":     { "type": "int",    "description": "The bundle's own number. This is what users type to identify a bundle.", "synonyms": ["bundle", "bundle no", "bundle id"], "identifier": true },
+        "Kit":              { "type": "string", "description": "Name of the kit this bundle is built from.", "synonyms": ["kit name"], "loadValues": true, "groupable": true },
+        "DeviceSerials":    { "type": "string", "description": "Devices in this bundle. For details, query order_device with BundleId.", "list": true },
+        "DeviceCount":      { "type": "int",    "description": "Number of devices in the bundle.", "filterable": false },
+        "OrderNumbers":     { "type": "string", "description": "Orders this bundle was shipped in.", "list": true },
+        "PBKSerialNumbers": { "type": "string", "description": "Pre-built kits containing this bundle.", "list": true }
+    }
+    },
+
+    "kit": {
+    "description": "A kit type (a product template that bundles and pre-built kits are built from). One row per kit. Use it to list kits and see how many bundles and pre-built kits exist for each.",
+    "sqlFile": "Sql/kit.sql",
+    "key": "Kit",
+    "defaultSort": { "column": "Kit", "direction": "asc" },
+    "links": [
+        { "to": "bundle",       "via": "Kit", "kind": "one-to-many" },
+        { "to": "prebuilt_kit", "via": "Kit", "kind": "one-to-many" }
+    ],
+    "columns": {
+        "Kit":         { "type": "string", "description": "Name of the kit.", "synonyms": ["kit name", "kit type"], "loadValues": true },
+        "BundleCount": { "type": "int",    "description": "Number of bundles built from this kit.", "filterable": false },
+        "PBKCount":    { "type": "int",    "description": "Number of pre-built kits built from this kit.", "filterable": false }
+    }
+    },
+
+    "attachment": {
+    "description": "A document (file) attached to an enrollment or another object. One row per attachment. Use it for an attachment's type, file format and which enrollment it belongs to. File contents are not available.",
+    "sqlFile": "Sql/attachment.sql",
+    "key": "AttachmentId",
+    "defaultSort": { "column": "AttachmentId", "direction": "desc" },
+    "links": [
+        { "to": "enrollment", "via": "EnrollmentId", "kind": "many-to-one" }
+    ],
+    "columns": {
+        "AttachmentId":     { "type": "guid",   "description": "The attachment's ID (a GUID), as listed in an enrollment's AttachmentIds.", "synonyms": ["attachment", "document id", "file id"], "identifier": true },
+        "AttachmentType":   { "type": "string", "ansi": true, "description": "Kind of document.", "synonyms": ["document type"], "loadValues": true, "groupable": true },
+        "ObjectType":       { "type": "string", "ansi": true, "description": "What kind of object the attachment belongs to.", "loadValues": true, "groupable": true },
+        "ContentType":      { "type": "string", "ansi": true, "description": "File format, for example application/pdf.", "synonyms": ["file format", "mime type"], "loadValues": true },
+        "ObjectId":         { "type": "guid",   "description": "Internal ID of the object the attachment belongs to. Users never type this." },
+        "EnrollmentNumber": { "type": "int",    "description": "Enrollment this attachment belongs to (only for enrollment attachments).", "synonyms": ["enrollment"] },
+        "EnrollmentId":     { "type": "guid",   "description": "Internal ID of the enrollment. Use it to follow the link." }
+    }
+    }
+  }
+}

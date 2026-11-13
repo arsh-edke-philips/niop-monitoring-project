@@ -1,0 +1,46 @@
+[
+  { "id": "dev-01", "category": "lookup", "question": "where is device MT31061169?",
+    "calls": [ { "tool": "query_entity", "entity": "device", "filters": { "SerialNumber": "MT31061169" } } ],
+    "answer_contains": ["Safety Stock"] },
+
+  { "id": "ord-01", "category": "lookup", "question": "whats the status for order 4",
+    "calls": [ { "tool": "query_entity", "entity": "order", "filters": { "OrderNumber": "4" } } ],
+    "answer_contains": ["Cancelled"] },
+
+  { "id": "rep-01", "category": "values", "question": "What is the enrollment number of report 1090?",
+    "calls": [ { "tool": "query_entity", "entity": "report", "filters": { "ReportNumber": "1090" } } ],
+    "answer_contains": ["1843768"] },
+
+  { "id": "syn-01", "category": "synonym", "question": "which bin is MT31061169 sitting in?",
+    "calls": [ { "tool": "query_entity", "entity": "device", "filters": { "SerialNumber": "MT31061169" } } ],
+    "answer_contains": ["Safety Stock"] },
+
+  { "id": "fnd-01", "category": "clarify", "question": "what is 1090?",
+    "calls": [ { "tool": "find_by_identifier", "value": "1090" } ],
+    "clarify": true },
+
+  { "id": "cnt-01", "category": "group", "question": "how many orders are there by status?",
+    "calls": [ { "tool": "count_entity", "entity": "order", "group_by": "OrderStatus" } ],
+    "answer_contains": ["Pending", "887"] },
+
+  { "id": "lnk-01", "category": "link", "question": "what is the enrollment status for report 1090?",
+    "calls": [ { "tool": "query_entity", "entity": "report", "filters": { "ReportNumber": "1090" } } ],
+    "answer_contains": ["Awaiting Processing"] },
+
+  { "id": "trp-01", "category": "list-trap", "question": "which enrollment does order 4 belong to?",
+    "calls": [ { "tool": "query_entity", "entity": "order", "filters": { "OrderNumber": "4" } } ],
+    "answer_contains": ["null"] },
+
+  { "id": "fup-01", "category": "followup",
+    "setup": ["show me order 4"],
+    "question": "and which center is it at?",
+    "calls": [],
+    "answer_contains": ["Chester"] },
+
+  { "id": "nf-01", "category": "notfound", "question": "status of order 99999999?",
+    "calls": [ { "tool": "query_entity", "entity": "order", "filters": { "OrderNumber": "99999999" } } ],
+    "answer_contains": ["couldn’t find"] },
+
+  { "id": "scp-01", "category": "scope", "question": "what's the weather in Pune today?",
+    "no_tools": true }
+]

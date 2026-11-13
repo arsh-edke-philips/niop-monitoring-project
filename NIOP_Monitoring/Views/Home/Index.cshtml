@@ -1,0 +1,493 @@
+@model OperationsDashboardViewModel
+
+<div class="dashboard-shell">
+    <section class="hero-panel">
+        <div>
+            <p class="eyebrow">Inventory & Order Processing</p>
+            <h1>Operations dashboard</h1>
+            <p class="hero-copy">A compact, low-clutter view of order flow, device movement, exceptions, and SLA risk.</p>
+        </div>
+        <div class="hero-metrics">
+            <div><span>Orders created today</span><strong>@Model.Summary.OrdersCreatedToday</strong></div>
+            <div><span>Orders created this week</span><strong>@Model.Summary.OrdersCreatedThisWeek</strong></div>
+            <div><span>Orders created this month</span><strong>@Model.Summary.OrdersCreatedThisMonth</strong></div>
+            <div><span>Pending orders</span><strong>@Model.Summary.PendingOrders</strong></div>
+            <div><span>On-time shipping</span><strong>@Model.Summary.ShippedWithinDeliveryDatePercentage.ToString("F1")%</strong></div>
+        </div>
+    </section>
+
+    <section class="metric-grid">
+        <article class="metric-card accent">
+            <span>Pending orders</span>
+            <strong>@Model.Orders.PendingOrders</strong>
+            <small>Across all channels</small>
+        </article>
+        <article class="metric-card">
+            <span>Delayed orders</span>
+            <strong>@Model.Orders.DelayedOrders</strong>
+            <small>Past delivery date</small>
+        </article>
+        <article class="metric-card">
+            <span>Avg fulfillment duration</span>
+            <strong>@Model.Orders.AvgFulfillmentDurationDays.ToString("F1")d</strong>
+            <small>Order created to shipped</small>
+        </article>
+        <article class="metric-card">
+            <span>Cancelled volume</span>
+            <strong>@Model.Orders.CancelledOrderVolume</strong>
+            <small>Last 30 days</small>
+        </article>
+    </section>
+
+    <section class="two-column">
+        <article class="panel">
+            <div class="panel-head">
+                <h2>Orders</h2>
+                <span>Pending orders by distribution center</span>
+            </div>
+            <div class="dc-grid">
+                @foreach (var dc in Model.Orders.PendingByDistributionCenter)
+                {
+                    <div class="dc-card">
+                        <span>@dc.DistributionCenter</span>
+                        <strong>@dc.PendingOrders</strong>
+                        <small>Pending orders</small>
+                    </div>
+                }
+            </div>
+        </article>
+
+        <article class="panel">
+            <div class="panel-head">
+                <h2>Devices Received by Each Distribution Center</h2>
+                <span>Click a center to see devices by location</span>
+            </div>
+            <div class="dc-devices-grid">
+                @foreach (var c in Model.DeviceCounts)
+                {
+                    <div class="dc-device-card clickable" data-center-id="@c.Id" data-center-name="@c.CenterName">
+                        <h4>@c.CenterName</h4>
+                        <div class="device-type-row"><span>Today</span><strong>@c.TodayCount</strong></div>
+                        <div class="device-type-row"><span>Last week</span><strong>@c.LastWeekCount</strong></div>
+                        <div class="device-type-row"><span>Last month</span><strong>@c.LastMonthCount</strong></div>
+                        <div class="device-type-row"><span>Total</span><strong>@c.TotalCount</strong></div>
+                    </div>
+                }
+            </div>
+        </article>
+
+        <div id="locationModal" class="modal-overlay" hidden>
+            <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="locationModalTitle">
+                <div class="modal-head">
+                    <div>
+                        <h3 id="locationModalTitle">Devices by location</h3>
+                        <p id="locationModalCenterName" class="modal-center-name"></p>
+                    </div>
+                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    @foreach (var center in Model.LocationDeviceCounts)
+                    {
+                        <div class="center-locations" data-center-id="@center.CenterId" data-center-name="@center.CenterName" hidden>
+                            <table class="data-table">
+                                <thead><tr><th>Location</th><th class="num">Devices</th></tr></thead>
+                                <tbody>
+                                    @foreach (var loc in center.LocationCounts)
+                                    {
+                                        <tr><td>@loc.Location</td><td class="num">@loc.Count</td></tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr><th>Total</th><th class="num">@center.LocationCounts.Sum(l => l.Count)</th></tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                    <p class="muted center-empty" hidden>No devices found for this center.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel grid-bottom">
+        <div>
+            <h2>Device flow duration</h2>
+            <p>Average time from Received to Ready to Ship or Being placed in a Pre-Built Kit.</p>
+            <strong class="big-number">@Model.Devices.AvgVendorToTestedAndShippedDays.ToString("F1") days</strong>
+        </div>
+    </section>
+
+    <section class="panel drilldown-panel">
+        <div class="panel-head">
+            <h2>Devices and orders</h2>
+            <span>Search or click a record to view lineage</span>
+        </div>
+
+        <div class="drilldown-grid">
+            <div class="lineage-column">
+                <h3>Devices</h3>
+                <input type="text" class="search-input lineage-search" data-target="device-list" placeholder="Search devices...">
+                <div class="record-list scrollable-list" id="device-list">
+                    @foreach (var device in Model.DevicesList)
+                    {
+                        <button type="button" class="record-row device-record" data-bs-toggle="modal" data-bs-target="#deviceTreeModal" data-device-data="@(System.Text.Json.JsonSerializer.Serialize(device, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))">
+                            <span>@device.Device</span>
+                            <small>@device.DeviceType, @device.Part</small>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="lineage-column">
+                <h3>Orders</h3>
+                <input type="text" class="search-input lineage-search" data-target="order-list" placeholder="Search orders...">
+                <div class="record-list scrollable-list" id="order-list">
+                    @foreach (var order in Model.OrdersList)
+                    {
+                        <button type="button" class="record-row order-record" data-bs-toggle="modal" data-bs-target="#orderTreeModal" data-order-data="@(System.Text.Json.JsonSerializer.Serialize(order, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))">
+                            <span>@order.OrderNumber</span>
+                            <small>@order.OrderType · @order.OrderStatus</small>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="lineage-column">
+                <h3>Enrollment</h3>
+                <input type="text" class="search-input lineage-search" data-target="enrollment-list" placeholder="Search enrollments...">
+                <div class="record-list scrollable-list" id="enrollment-list">
+                    @foreach (var enrollment in Model.EnrollmentsList)
+                    {
+                        <button type="button" class="record-row enrollment-record" data-bs-toggle="modal" data-bs-target="#enrollmentTreeModal" data-enrollment-data="@(System.Text.Json.JsonSerializer.Serialize(enrollment, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))">
+                            <span>@enrollment.EnrollmentNumber</span>
+                            <small>@enrollment.EnrollmentStatus · @enrollment.Facility</small>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="lineage-column">
+                <h3>Report</h3>
+                <input type="text" class="search-input lineage-search" data-target="report-list" placeholder="Search reports...">
+                <div class="record-list scrollable-list" id="report-list">
+                    @foreach (var report in Model.ReportsList)
+                    {
+                        <button type="button" class="record-row report-record" data-bs-toggle="modal" data-bs-target="#reportTreeModal" data-report-data="@(System.Text.Json.JsonSerializer.Serialize(report, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))">
+                            <span>@report.ReportNumber</span>
+                            <small>@report.ReportType · @report.ReportStatus</small>
+                        </button>
+                    }   
+                </div>
+            </div>
+            <div class="lineage-column">
+                <h3>PreBuiltKit</h3>
+                <input type="text" class="search-input lineage-search" data-target="pbk-list" placeholder="Search prebuiltkits...">
+                <div class="record-list scrollable-list" id="pbk-list">
+                    @foreach (var pbk in Model.PreBuiltKitPaths)
+                    {
+                        <button type="button" class="record-row pbk-record" data-bs-toggle="modal" data-bs-target="#pbkTreeModal" data-pbk-data="@(System.Text.Json.JsonSerializer.Serialize(pbk, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))">
+                            <span>@pbk.PBKSerialNumber</span>
+                            <small>@pbk.Center · @pbk.PBKStatus</small>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="lineage-column">
+                <h3>Transfer</h3>
+                <input type="text" class="search-input lineage-search" data-target="transfer-list" placeholder="Search transfers...">
+                <div class="record-list scrollable-list" id="transfer-list">
+                    @foreach (var transfer in Model.TransferPaths)
+                    {
+                        <button type="button" class="record-row transfer-record" data-bs-toggle="modal" data-bs-target="#transferTreeModal" data-transfer-data="@(System.Text.Json.JsonSerializer.Serialize(transfer, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))">
+                            <span>Transfer #@transfer.TransferNumber</span>
+                            <small>@transfer.FromCenter → @transfer.ToCenter . @transfer.TransferStatus</small>
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Device lineage modal -->
+    <div class="modal fade" id="deviceTreeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content tree-modal">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">Device lineage</h5>
+                        <small class="text-muted" id="deviceHeader"></small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="tree-container">
+                        <div class="tree-node">
+                            <div class="tree-label">Device</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>ID:</span><strong id="dev-id"></strong></div>
+                                <div class="tree-row"><span>Type:</span><strong id="dev-type"></strong></div>
+                                <div class="tree-row"><span>Category:</span><strong id="dev-category"></strong></div>
+                                <div class="tree-row"><span>Config:</span><strong id="dev-config"></strong></div>
+                                <div class="tree-row"><span>Part:</span><strong id="dev-part"></strong></div>
+                                <div class="tree-row"><span>Location:</span><strong id="dev-location"></strong></div>
+                                <div class="tree-row"><span>Center:</span><strong id="dev-center"></strong></div>
+                                <div class="tree-row"><span>Facility:</span><strong id="dev-facility"></strong></div>
+                                <div class="tree-row"><span>PO Number:</span><strong id="dev-po"></strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Bundle</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Bundle ID:</span><strong id="dev-bundle">—</strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Order</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Order ID:</span><strong id="dev-order">—</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order lineage modal -->
+    <div class="modal fade" id="orderTreeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content tree-modal">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">Order lineage</h5>
+                        <small class="text-muted" id="orderHeader"></small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="tree-container">
+                        <div class="tree-node">
+                            <div class="tree-label">Order</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>ID:</span><strong id="ord-id"></strong></div>
+                                <div class="tree-row"><span>Type:</span><strong id="ord-type"></strong></div>
+                                <div class="tree-row"><span>Status:</span><strong id="ord-status"></strong></div>
+                                <div class="tree-row"><span>Center:</span><strong id="ord-center"></strong></div>
+                                <div class="tree-row"><span>Facility:</span><strong id="ord-facility"></strong></div>
+                                <div class="tree-row"><span>Created By:</span><strong id="ord-user"></strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Kit</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Kit ID:</span><strong id="ord-kit">—</strong></div>
+                                <div class="tree-row"><span>Pre-Built Kit:</span><strong id="ord-prebuilt">—</strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Bundle</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Bundle ID:</span><strong id="ord-bundle">—</strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Device</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Device ID:</span><strong id="ord-device">—</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="enrollmentTreeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content tree-modal">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">Enrollment lineage</h5>
+                        <small class="text-muted" id="enrollmentHeader"></small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="tree-container">
+                        <div class="tree-node">
+                            <div class="tree-label">Enrollment</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Status:</span><strong id="enr-status"></strong></div>
+                                <div class="tree-row"><span>Device Type:</span><strong id="enr-deviceType"></strong></div>
+                                <div class="tree-row"><span>Billing Method:</span><strong id="enr-billingMethod"></strong></div>
+                                <div class="tree-row"><span>Billing Status:</span><strong id="enr-billingStatus"></strong></div>
+                                <div class="tree-row"><span>Pending Attachments:</span><strong id="enr-pendingAttachments"></strong></div>
+                                <div class="tree-row"><span>Facility:</span><strong id="enr-facility"></strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Attachment</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Attachment ID:</span><strong id="enr-attachmentId"></strong></div>
+                                <div class="tree-row"><span>Content Type:</span><strong id="enr-contentType"></strong></div>
+                                <div class="tree-row"><span>Attachment Type:</span><strong id="enr-attachmentType"></strong></div>
+                                <div class="tree-row"><span>Object Type:</span><strong id="enr-objectType"></strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Report</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Report Number:</span><strong id="enr-reportNumber"></strong></div>
+                                <div class="tree-row"><span>Report Type:</span><strong id="enr-reportType"></strong></div>
+                                <div class="tree-row"><span>Report File ID:</span><strong id="enr-reportFileId"></strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Order</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Order Number:</span><strong id="enr-orderNumber"></strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="reportTreeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content tree-modal">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">Report lineage</h5>
+                        <small class="text-muted" id="reportHeader"></small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="tree-container">
+                        <div class="tree-node">
+                            <div class="tree-label">Report</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Status:</span><strong id="rep-status"></strong></div>
+                                <div class="tree-row"><span>Type:</span><strong id="rep-type"></strong></div>
+                                <div class="tree-row"><span>Number:</span><strong id="rep-number"></strong></div>
+                                <div class="tree-row"><span>On Hold:</span><strong id="rep-onhold"></strong></div>
+                                <div class="tree-row"><span>On Hold By:</span><strong id="rep-onholdby"></strong></div>
+                                <div class="tree-row"><span>On Hold Reason:</span><strong id="rep-onholdreason"></strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Attachment</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Attachment ID:</span><strong id="rep-attachmentId"></strong></div>
+                                <div class="tree-row"><span>Attachment Type:</span><strong id="rep-attachmentType"></strong></div>
+                                <div class="tree-row"><span>Object Type:</span><strong id="rep-objectType"></strong></div>
+                                <div class="tree-row"><span>Content Type:</span><strong id="rep-contentType"></strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Enrollment</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Enrollment Number:</span><strong id="rep-enrollmentNumber"></strong></div>
+                                <div class="tree-row"><span>Enrollment Status:</span><strong id="rep-enrollmentStatus"></strong></div>
+                                <div class="tree-row"><span>Device Type:</span><strong id="rep-enrollmentDeviceType"></strong></div>
+                                <div class="tree-row"><span>Facility:</span><strong id="rep-enrollmentFacility"></strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="pbkTreeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content tree-modal">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">PreBuiltKit lineage</h5>
+                        <small class="text-muted" id="pbkHeader"></small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="tree-container">
+                        <div class="tree-node">
+                            <div class="tree-label">PBK</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Number:</span><strong id="pbk-number"></strong></div>
+                                <div class="tree-row"><span>Status:</span><strong id="pbk-status"></strong></div>
+                                <div class="tree-row"><span>Center:</span><strong id="pbk-center"></strong></div>
+                                <div class="tree-row"><span>Bundle:</span><strong id="pbk-bundle"></strong></div>
+                                <div class="tree-row"><span>Expiration:</span><strong id="pbk-expiration"></strong></div>
+                                <div class="tree-row"><span>Kit:</span><strong id="pbk-kit"></strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Kit</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Part Numbers:</span><strong id="pbk-partNumber"></strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Order</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Order Number:</span><strong id="pbk-orderNumber"></strong></div>
+                                <div class="tree-row"><span>Order Status:</span><strong id="pbk-orderStatus"></strong></div>
+                                <div class="tree-row"><span>Order Type:</span><strong id="pbk-orderType"></strong></div>
+                                <div class="tree-row"><span>Order Center:</span><strong id="pbk-orderCenter"></strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="transferTreeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content tree-modal">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">Transfer lineage</h5>
+                        <small class="text-muted" id="transferHeader"></small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="tree-container">
+                        <div class="tree-node">
+                            <div class="tree-label">Transfer</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>Number:</span><strong id="trn-number"></strong></div>
+                                <div class="tree-row"><span>Status:</span><strong id="trn-status"></strong></div>
+                                <div class="tree-row"><span>Note:</span><strong id="trn-note"></strong></div>
+                                <div class="tree-row"><span>Center From:</span><strong id="trn-centerFrom"></strong></div>
+                                <div class="tree-row"><span>Center To:</span><strong id="trn-centerTo"></strong></div>
+                            </div>
+                        </div>
+                        <div class="tree-arrow">→</div>
+                        <div class="tree-node">
+                            <div class="tree-label">Devices</div>
+                            <div class="tree-card">
+                                <div class="tree-row"><span>List:</span><strong id="trn-devices"></strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/js/drilldown.js"></script>
+</div>

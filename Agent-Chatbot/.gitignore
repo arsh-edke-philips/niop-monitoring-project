@@ -1,0 +1,5 @@
+.env
+.venv/
+agent.log
+.copilot-home/
+__pycache__/

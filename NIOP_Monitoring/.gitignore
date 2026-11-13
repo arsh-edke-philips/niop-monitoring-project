@@ -1,0 +1,29 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+
+# Visual Studio and IDE user state
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local configuration and secrets
+appsettings.json
+appsettings.Development.json
+.env
+.env.*
+!.env.example
+http-client.env.json
+secrets.json
+
+# Logs and test results
+*.log
+TestResults/
+
+# NuGet packages
+*.nupkg
